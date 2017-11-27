@@ -9,6 +9,8 @@ namespace EventPatternMatching
 {
     public class FailureDetector : IEventCounter
     {
+        private enum Status { FailureCondition1, FailureCondition2, Normal};
+
         private static FailureDetector instance;
 
         private ConcurrentDictionary<string, int> eventHistory = new ConcurrentDictionary<string, int>();
@@ -38,7 +40,7 @@ namespace EventPatternMatching
         {
             LineEntry previous = new LineEntry();
             LineEntry current;
-            Boolean sequenceMatch = false;
+            Status status = Status.Normal;
 
             while (!eventLog.EndOfStream)
             {
@@ -60,21 +62,31 @@ namespace EventPatternMatching
                 if (current.Stage == previous.Stage) { continue; }
 
                 // if stage changed from 3 to 2, check for stage 3's duration
-                else if (previous.Stage == 3 && current.Stage == 2)
+                else if (status == Status.Normal && previous.Stage == 3 && current.Stage == 2)
                 {
                     // check duration
                     TimeSpan diff = current.Timestamp - previous.Timestamp;
                     if (diff.TotalMinutes >= 5.0)
                     {
-                        sequenceMatch = true;
+                        status = Status.FailureCondition1;
                     }
                 }
 
-                else if (sequenceMatch && current.Stage == 0)
+                // if failure sequence 1 is follow by any cycle of stage 2 and 3
+                else if (status != Status.Normal && (current.Stage == 2 || current.Stage == 3))
                 {
-                    // Failere event detected, update history and reset status
+                    status = Status.FailureCondition2;
+                }
+
+                // Failere event detected, update history and reset status
+                else if (status != Status.Normal && current.Stage == 0)
+                {
                     this.eventHistory.AddOrUpdate(deviceID, 1, (key, oldValue) => oldValue + 1);
-                    sequenceMatch = false;
+                    status = Status.Normal;
+                }
+                else
+                {
+                    status = Status.Normal;
                 }
 
                 previous = current;

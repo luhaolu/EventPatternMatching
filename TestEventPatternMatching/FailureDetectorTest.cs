@@ -12,8 +12,9 @@ namespace TestEventPatternMatching
     public class FailureDetectorTest
     {
         [TestMethod]
-        public void TestSingleFailuere()
+        public void TestFailuere()
         {
+            // Test sequence of 2,3,3,2,0
             List<LineEntry> list = new List<LineEntry>();
             list.Add(new LineEntry("2011-03-07 06:25:32", "2"));
             list.Add(new LineEntry("2011-03-07 09:15:55", "3"));
@@ -28,47 +29,107 @@ namespace TestEventPatternMatching
 
             FailureDetector.Instance.ParseEvents("Device1", reader);
             Assert.AreEqual(1, FailureDetector.Instance.GetEventCount("Device1"));
+
+            // Test sequence of 1,2,3,2,2,0
+            list = new List<LineEntry>();
+            list.Add(new LineEntry("2011-03-07 05:25:32", "1"));
+            list.Add(new LineEntry("2011-03-07 06:25:32", "2"));
+            list.Add(new LineEntry("2011-03-07 09:15:55", "3"));
+            list.Add(new LineEntry("2011-03-07 12:00:00", "2"));
+            list.Add(new LineEntry("2011-03-07 12:03:27", "2"));
+            list.Add(new LineEntry("2011-03-07 20:23:01", "0"));
+
+            reader = new StreamReader(new MemoryStream(Encoding.UTF8.GetBytes(LineEntry.GetCSVFile(list))));
+
+            FailureDetector.Instance.ParseEvents("Device1", reader);
+            Assert.AreEqual(2, FailureDetector.Instance.GetEventCount("Device1"));
+
+            // Test sequence of 3,2,3,2,0
+            list = new List<LineEntry>();
+            list.Add(new LineEntry("2011-03-07 05:25:32", "3"));
+            list.Add(new LineEntry("2011-03-07 06:25:32", "2"));
+            list.Add(new LineEntry("2011-03-07 09:15:55", "3"));
+            list.Add(new LineEntry("2011-03-07 12:00:00", "2"));
+            list.Add(new LineEntry("2011-03-07 20:23:01", "0"));
+
+            reader = new StreamReader(new MemoryStream(Encoding.UTF8.GetBytes(LineEntry.GetCSVFile(list))));
+
+            FailureDetector.Instance.ParseEvents("Device1", reader);
+            Assert.AreEqual(3, FailureDetector.Instance.GetEventCount("Device1"));
+
+            // Test sequence of 3,2,3,2,3,3,0
+            list = new List<LineEntry>();
+            list.Add(new LineEntry("2011-03-07 05:25:32", "3"));
+            list.Add(new LineEntry("2011-03-07 06:25:32", "2"));
+            list.Add(new LineEntry("2011-03-07 09:15:55", "3"));
+            list.Add(new LineEntry("2011-03-07 12:00:00", "2"));
+            list.Add(new LineEntry("2011-03-07 12:00:01", "3"));
+            list.Add(new LineEntry("2011-03-07 12:00:02", "3"));
+            list.Add(new LineEntry("2011-03-07 20:23:01", "0"));
+
+            reader = new StreamReader(new MemoryStream(Encoding.UTF8.GetBytes(LineEntry.GetCSVFile(list))));
+
+            FailureDetector.Instance.ParseEvents("Device1", reader);
+            Assert.AreEqual(4, FailureDetector.Instance.GetEventCount("Device1"));
+
         }
 
         [TestMethod]
-        public void TestNoFailuere1()
+        public void TestNoFailuere()
         {
+            // Test sequence of 1,2,3,0
+            List<LineEntry>  list = new List<LineEntry>();
+            list.Add(new LineEntry("2011-03-07 06:25:32", "1"));
+            list.Add(new LineEntry("2011-03-07 09:15:55", "2"));
+            list.Add(new LineEntry("2011-03-07 12:00:00", "3"));
+            list.Add(new LineEntry("2011-03-07 13:03:27", "0"));
+
+            StreamReader reader = new StreamReader(new MemoryStream(Encoding.UTF8.GetBytes(LineEntry.GetCSVFile(list))));
+
+            FailureDetector.Instance.ParseEvents("Device2", reader);
+            Assert.AreEqual(0, FailureDetector.Instance.GetEventCount("Device2"));
+
             // In stage 3 less than 5 minutes
-            List<LineEntry> list = new List<LineEntry>();
+            list = new List<LineEntry>();
             list.Add(new LineEntry("2011-03-07 06:25:32", "2"));
             list.Add(new LineEntry("2011-03-07 12:00:00", "3"));
             list.Add(new LineEntry("2011-03-07 12:00:01", "3"));
             list.Add(new LineEntry("2011-03-07 12:03:27", "2"));
             list.Add(new LineEntry("2011-03-07 20:23:01", "0"));
             
-            // convert string to stream
-            byte[] byteArray = Encoding.UTF8.GetBytes(LineEntry.GetCSVFile(list));
-            MemoryStream stream = new MemoryStream(byteArray);
-            StreamReader reader = new StreamReader(stream);
+            reader = new StreamReader(new MemoryStream(Encoding.UTF8.GetBytes(LineEntry.GetCSVFile(list))));
             
             FailureDetector.Instance.ParseEvents("Device2", reader);
             Assert.AreEqual(0, FailureDetector.Instance.GetEventCount("Device2"));
-        }
 
-        [TestMethod]
-        public void TestNoFailuere2()
-        {
-            // In stage 3 more than 5 minutes but didn't go to stage 2
-            List<LineEntry> list = new List<LineEntry>();
+            // In stage 3 more than 5 minutes, but had a sequence of 3,2,1,0
+            list = new List<LineEntry>();
+            list.Add(new LineEntry("2011-03-07 06:25:32", "2"));
+            list.Add(new LineEntry("2011-03-07 09:15:55", "3"));
+            list.Add(new LineEntry("2011-03-07 12:00:00", "3"));
+            list.Add(new LineEntry("2011-03-07 13:03:27", "2"));
+            list.Add(new LineEntry("2011-03-07 20:23:01", "1"));
+            list.Add(new LineEntry("2011-03-07 21:23:01", "0"));
+            
+            reader = new StreamReader(new MemoryStream(Encoding.UTF8.GetBytes(LineEntry.GetCSVFile(list))));
+
+            FailureDetector.Instance.ParseEvents("Device2", reader);
+            Assert.AreEqual(0, FailureDetector.Instance.GetEventCount("Device2"));
+
+            // In stage 3 more than 5 minutes, but had a sequence of 3,1,1,0
+            list = new List<LineEntry>();
             list.Add(new LineEntry("2011-03-07 06:25:32", "2"));
             list.Add(new LineEntry("2011-03-07 09:15:55", "3"));
             list.Add(new LineEntry("2011-03-07 12:00:01", "3"));
             list.Add(new LineEntry("2011-03-07 12:03:27", "1"));
             list.Add(new LineEntry("2011-03-07 12:05:27", "1"));
             list.Add(new LineEntry("2011-03-07 20:23:01", "0"));
-            
-            // convert string to stream
-            byte[] byteArray = Encoding.UTF8.GetBytes(LineEntry.GetCSVFile(list));
-            MemoryStream stream = new MemoryStream(byteArray);
-            StreamReader reader = new StreamReader(stream);
-            
-            FailureDetector.Instance.ParseEvents("Device3", reader);
-            Assert.AreEqual(0, FailureDetector.Instance.GetEventCount("Device3"));
+
+            reader = new StreamReader(new MemoryStream(Encoding.UTF8.GetBytes(LineEntry.GetCSVFile(list))));
+
+            FailureDetector.Instance.ParseEvents("Device2", reader);
+            Assert.AreEqual(0, FailureDetector.Instance.GetEventCount("Device2"));
+
         }
 
         [TestMethod]
